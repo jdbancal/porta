@@ -38,6 +38,7 @@ REVISED BY ANDREAS LOEBEL
 
 #include "porta.h"
 
+extern int blocks, itr, totalineq; // added by J-D B to allow initialization in libporta.cpp
 
 extern void gauss( int, int, int, int, int, int *, int *, int [] );
 extern void fourier_motzkin( char [], int, int, int, int, int [], int * );

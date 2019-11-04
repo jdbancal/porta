@@ -515,11 +515,7 @@ void valid_ints( int eqdimpar, RAT *eqarpar, int neqpar,int eqrlpar,
     
     integ_rekurs(eqsum,iesum,0);
     
-#if defined WIN32 || defined __CYGWIN32__ || defined __APPLE__
     free(integ);
-#else // WIN32
-    cfree(integ);
-#endif // WIN32
 
     fprintf(fp,"\nEND\n");
     fclose(fp);
@@ -534,10 +530,10 @@ void valid_ints( int eqdimpar, RAT *eqarpar, int neqpar,int eqrlpar,
 
 /*****************************************************************/
 
-void arith_overflow_func()
+//void arith_overflow_func() // It doesn't look like we need this function since only the one of mp.h is called... removed by J-D B.
 
 /*****************************************************************/
      
-{ 
-    msg( "Arithmetic overflow !", "", 0 );
-}
+//{ 
+//    msg( "Arithmetic overflow !", "", 0 );
+//}

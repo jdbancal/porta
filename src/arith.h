@@ -28,6 +28,7 @@ REVISED BY ANDREAS LOEBEL
            D-14195 BERLIN
 
 *******************************************************************************/
+// Last edit on 4.4.2013 by J-D Bancal
 /*  LAST EDIT: Tue Aug 13 16:07:51 2002 by Andreas Loebel (opt0.zib.de)  */
 /* $Id: arith.h,v 1.2 2009/09/21 07:05:11 bzfloebe Exp $ */
 
@@ -51,6 +52,8 @@ extern int eqie_satisfied( RAT *, RAT *, int, int );
 extern void scal_mul( RAT *, RAT *, RAT *, int );
 extern int igcd( int, int );
 extern int gcdrow( int *, int );
+extern long int longgcdrow( long int *, int );
+extern long long int longlonggcdrow( long long int *, int );
 
 
 #endif // _ARITH_H

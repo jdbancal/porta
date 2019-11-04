@@ -28,9 +28,9 @@ REVISED BY ANDREAS LOEBEL
            D-14195 BERLIN
 
 *******************************************************************************/
+// Last edit on 4.4.2013 by J-D Bancal
 /*  LAST EDIT: Tue Aug 13 16:06:54 2002 by Andreas Loebel (opt0.zib.de)  */
 /* $Id: arith.c,v 1.2 2009/09/21 07:05:11 bzfloebe Exp $ */
-
 
 #include "arith.h"
 #include "mp.h"
@@ -402,7 +402,73 @@ int gcdrow( int *x, int m )
 }
 
 
+// Overloaded function for no_denom in porta.c, added by J-D Bancal
+long int longgcdrow( long int *x, int m )
+{
 
+  int im;
+  long int r;
+
+  while (m > 0) {
+
+    r = x[0]%x[1];
+    if (r > 1) {
+      x[0] = x[1];
+      for(im = 1; im < m && x[im+1] > r; im++)
+        x[im] = x[im+1];
+      if (m > 1 && im < m && x[im+1] == r) {
+        for (;im < m; im++) 
+          x[im] = x[im+1];
+        m--;
+      }
+      else
+        x[im] = r;
+    }
+    else if (r == 0) {
+      for(im = 0; im < m; im++)
+        x[im] = x[im+1];
+      m--;
+    }
+    else return(1);
+  }
+
+  return(x[0]);
+
+}
+
+// Overloaded function for no_denom in porta.c, added by J-D Bancal
+long long int longlonggcdrow( long long int *x, int m )
+{
+
+  int im;
+  long int r;
+
+  while (m > 0) {
+
+    r = x[0]%x[1];
+    if (r > 1) {
+      x[0] = x[1];
+      for(im = 1; im < m && x[im+1] > r; im++)
+        x[im] = x[im+1];
+      if (m > 1 && im < m && x[im+1] == r) {
+        for (;im < m; im++) 
+          x[im] = x[im+1];
+        m--;
+      }
+      else
+        x[im] = r;
+    }
+    else if (r == 0) {
+      for(im = 0; im < m; im++)
+        x[im] = x[im+1];
+      m--;
+    }
+    else return(1);
+  }
+
+  return(x[0]);
+
+}
 
 
 

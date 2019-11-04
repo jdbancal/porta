@@ -39,6 +39,7 @@ REVISED BY ANDREAS LOEBEL
 #include "porta.h"
 #include "log.h"
 
+extern int comp; // Added by J-D B to allow initialization in libporta.cpp
 
 extern void initialize( );
 extern void set_I_functions( );
@@ -48,5 +49,6 @@ extern void get_options( int *, char **[] );
 extern void allo_list( int, unsigned **, int );
 extern void msg( char *, char *, int );
 
+char* RATallo( RAT *, int, int ); // Added by J-D B on 26.2.2013 for compatibility with portalib.cpp library.
 
 #endif // _COMMON_H

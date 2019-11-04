@@ -32,6 +32,7 @@ REVISED BY ANDREAS LOEBEL
 /* $Id: common.c,v 1.3 2009/09/21 07:05:11 bzfloebe Exp $ */
 
 
+#include "porta.h" // Added by J-D B for compatibility with c++ interface library libporta
 #include "common.h"
 #include "arith.h"
 #include "inout.h"
@@ -131,7 +132,7 @@ char* allo( char *ptr, unsigned oldsize, unsigned newsize )
 
 
 
-char andreas[20] = "sonmist";
+//char andreas[20] = "sonmist"; // Seems unused -- removed by J-D B
 
 listp *porta_list;
 

@@ -38,6 +38,8 @@ REVISED BY ANDREAS LOEBEL
 
 #include "porta.h"
 
+// Added by J-D B to make the variables initializable from libporta.cpp
+extern int comp_ps,delay,same_vals,rowlen;
 
 extern void sort( int, int, int, int );
 

@@ -50,6 +50,7 @@ extern void L_RAT_sub( RAT, RAT, RAT * );
 extern void L_RAT_mul( RAT, RAT, RAT * );
 extern void L_RAT_kue( loint *, loint * );
 extern void L_RAT_row_prim( RAT *, RAT *, RAT *, int );
+extern int L_RAT_no_denom( int , int , int , int );
 extern void L_RAT_writeline( FILE *, int, RAT *, int, RAT *, char, int * );
 extern loint lgcdrow( loint *, int );
 extern void hexprint( FILE *, loint );

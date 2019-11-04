@@ -37,6 +37,7 @@ REVISED BY ANDREAS LOEBEL
 #include "largecalc.h"
 
 
+// Note by J-D B: The following conditions maybe could be revised in view of long int and long long int data types...
 #define m_31        (1 << 31)
 #define get_numlen(x)   ((abs((x)->num)>>20) & m0_9)
 #define get_denlen(x)   ((abs((x)->num)>>10) & m0_9)
@@ -95,6 +96,7 @@ void arith_overflow_func( int cf, void (*call_func)(), RAT a, RAT b, RAT *c )
     
     SET_MP_realised; 
     
+	fprintf(prt, "\n\n\n --- SET_MP_realised = %i --- \n\n\n", SET_MP_realised);
     
 }
 
@@ -150,6 +152,14 @@ void RAT_to_L_RAT( RAT *x, int n )
 
 int return_from_mp()
 {
+
+	fprintf(prt, "vals_lt_MAXINT(ar1,nel_ar1) = %i\n", vals_lt_MAXINT(ar1,nel_ar1));
+	fprintf(prt, "vals_lt_MAXINT(ar2,nel_ar2) = %i\n", vals_lt_MAXINT(ar2,nel_ar2));
+	fprintf(prt, "vals_lt_MAXINT(ar3,nel_ar3) = %i\n", vals_lt_MAXINT(ar3,nel_ar3));
+	fprintf(prt, "vals_lt_MAXINT(ar4,nel_ar4) = %i\n", vals_lt_MAXINT(ar4,nel_ar4));
+	fprintf(prt, "vals_lt_MAXINT(ar5,nel_ar5) = %i\n", vals_lt_MAXINT(ar5,nel_ar5));
+	fprintf(prt, "vals_lt_MAXINT(ar6,nel_ar6) = %i\n", vals_lt_MAXINT(ar6,nel_ar6));
+
     if (!vals_lt_MAXINT(ar1,nel_ar1) || !vals_lt_MAXINT(ar2,nel_ar2) ||
         !vals_lt_MAXINT(ar3,nel_ar3) || !vals_lt_MAXINT(ar4,nel_ar4) ||
         !vals_lt_MAXINT(ar5,nel_ar5) || !vals_lt_MAXINT(ar6,nel_ar6))
@@ -633,7 +643,134 @@ void L_RAT_row_prim( RAT *old, RAT *new, RAT *p, int n )
 }
 
 
+// This function was added by J-D Bancal on 29.10.2014 to allow
+// removal of fractions in presence of large integer fractions
+//
+// THIS FUNCTION NEEDS TO BE ADAPTED TO L_RAT TYPE AND lorat. THEN
+// IT WILL BE POSSIBLE TO CALL IT IN xporta.c AFTER THE FOURIER-
+// MOTZKIN ELIMINATION...
+//
+int L_RAT_no_denom( int sysrow, int first, int last, int outmsg )
+/*
+ * Make a fractional point integer by multiplying it with a positive number
+ * that is as small as possible.
+ */
+{
+	fprintf(prt, "Arrived here with sysrow = %i, first = %i, last = %i, outmsg = %i\n", sysrow, first, last, outmsg);
+    int ret=1,i,j,ie;//,*denom;
+    int t;
+    
+    typedef long int intDenom;
+    // Here we use long int for the denominator, because product of denominators can become very big eventually...
+    intDenom scm,old_scm,*denom, gicidi,scmtmp;
+    denom = (intDenom *) allo(CP 0,0,U sysrow*sizeof(intDenom));
+    
+    if(outmsg)
+    { 
+        fprintf(prt,"transformation to integer values ");
 
+        /* 17.01.1994: include logging on file porta.log */
+        porta_log( "transformation to integer values ");
+    }
+    
+    for (ie = first; ie < last; ie++) 
+    {
+        
+        for (i = 0; i < sysrow; i++)
+            denom[i] = (porta_list[ie]->sys+i)->den.i;
+        
+//        qsort(CP denom,sysrow,sizeof(intDenom), // It shouldn't be necessary to order the denominators...
+//              (intDenom(*)(const void*,const void*))intcompare);
+        old_scm = scm = denom[0];
+        
+        for (i = 0,j = 0; i < sysrow; i++)
+            if (i > 0 && denom[i] != denom[i-1]) 
+            {
+                // Here we compute the LCM (least common multiple) of the two different numbers, using the fact that lcm(a,b)=|a*b|/gcd(a,b)
+                // First we compute the GCD of the two numbers
+                //gicidi = lgcd(old_scm, denom[i]);
+                /*intDenom tt, u, v;
+                u = old_scm;
+                v = denom[i];
+                while (v) {
+                    tt = u; 
+                    u = v; 
+                    v = tt % v;
+                }
+                gicidi = labs(u);*/
+                gicidi = longgcd(old_scm, denom[i]);
+				// Now we continue with the LCM
+				scmtmp = labs(old_scm)/gicidi;
+                scm = scmtmp*labs(denom[i]);
+                if (scm/labs(denom[i]) != scmtmp) // To check whether we multiplied too big numbers...
+                {
+					fprintf(prt, "int version of the error:\n");
+					fprintf(prt, "Error for i=%i, j=%i\n", i, j);
+					fprintf(prt, "old_scm = %i, scm = %i, denom[i] = %i, ratio = %i, scmtmp = %li\n", old_scm, scm, denom[i], scm/denom[i], scmtmp);
+					fprintf(prt, "gicidi = %i\n, ", gicidi);
+
+					int tmpi;
+					for (tmpi = 0; tmpi < i; tmpi++)
+						fprintf(prt, "denom[%i] = %i\n", tmpi, denom[tmpi]);
+
+					fprintf(prt, "long int version of the error:\n");
+					fprintf(prt, "Error for i=%li, j=%li\n", i, j);
+					fprintf(prt, "old_scm = %li, scm = %li, denom[i] = %li, ratio = %li, scmtmp = %li\n", old_scm, scm, denom[i], scm/denom[i], scmtmp);
+					fprintf(prt, "gicidi = %li\n, ", gicidi);
+
+					for (tmpi = 0; tmpi < i; tmpi++)
+					{
+						fprintf(prt, "num[%li] = %li\n", tmpi, (porta_list[ie]->sys+i)->num);
+						fprintf(prt, "denom[%li] = %li\n", tmpi, denom[tmpi]);
+					}
+
+					fprintf(prt, "The full line is : ");
+					for (tmpi = 0; tmpi < sysrow; tmpi++)
+					{
+						fprintf(prt, "%li/%li ", (porta_list[ie]->sys+i)->num, denom[tmpi]);
+					}
+					fprintf(prt, "\n\n");
+
+
+                    ret = 0;
+                    break;
+                }
+                else
+                    old_scm = scm;
+                denom[j++] = denom[i];
+            }
+        if (i != sysrow)
+            continue;
+		for (i = 0; i < sysrow; i++)
+            denom[i] = scm/denom[i];
+        scm = scm/longgcdrow(denom,j);
+        
+        //printf("%d\n\n",scm);
+
+        (porta_list[ie]->sys+sysrow-1)->num *= scm; // Careful that the produced number here could be larger than the largest representable integer... (This is not checked for at the moment...)
+        for (i = 0; i < sysrow-1; i++) 
+        {
+            (porta_list[ie]->sys+i)->num = 
+                (scm/(porta_list[ie]->sys+i)->den.i)
+                *(porta_list[ie]->sys+i)->num;
+            (porta_list[ie]->sys+i)->den.i = 1;
+        }
+        
+    }
+    
+    if(outmsg)
+    {
+        fprintf(prt,"\n");
+
+        /* 17.01.1994: include logging on file porta.log */
+        porta_log( "\n");
+    }   
+    
+    free(denom);
+
+    return(ret);
+    
+}
 
 
 
@@ -657,6 +794,24 @@ void hexprint( FILE *fp, loint lx )
 }
 
 
+void hexprintWithOppositeSign( FILE *fp, loint lx )
+{
+    int i;
+    
+    if (!lx.len)
+        fprintf(fp,"0");
+    else  {
+    if (!lx.neg)
+        fprintf(fp,"-");
+    if (lx.len == 1 && !(lx.val[0] & m_31))
+        fprintf(fp,"%u",lx.val[0]);
+    else {
+    fprintf(fp,"(hex)");
+    for(i = lx.len-1; i >= 0; i--)
+        fprintf(fp,"%x%x%x",15&(lx.val[i]>>8),15&(lx.val[i]>>4),15&(lx.val[i]));
+}
+}
+}
 
 
 
@@ -709,39 +864,101 @@ void L_RAT_writeline( FILE *fp, int rowl, RAT *ptr, int format, RAT* max, char e
     int j;
     lorat x;
     
-    for ( j = 0; j < rowl;ptr++,j++) 
-    {
-        if (j == rowl-1 && !format)
-            fprintf(fp," %c= ",eqie);
-        if (!ptr->num && (format || (!format && j == rowl-1)))
-            fprintf(fp,"0");
-        else if (ptr->num && vals_lt_MAXINT(ptr,1)) 
-        {
-            if (ptr->num < 0)
-                fprintf(fp,"-");
-            else if (ptr->num > 0 && ! format)
-                fprintf(fp,"+");
-            fprintf(fp,"%u",ptr->den.p[0]);
-            if ( ptr->den.p[1] > 1) 
-                fprintf(fp,"/%u",ptr->den.p[1]);
-        }       
-        else  if (ptr->num) 
-        {
-            L_RAT_to_lorat(*ptr,&x);
-            if (ptr->num > 0 && ! format)
-                fprintf(fp,"+");
-            hexprint(fp,x.num);
-            if (x.den.len > 1 || x.den.val[0] > 1) 
-            {
-                fprintf(fp,"/");
-                hexprint(fp,x.den);
-            }  
-        }
-        if (format)
-            fprintf(fp," ");
-        else if (j != rowl-1 && ptr->num)
-            fprintf(fp,"x%i",(indx)?(indx[j]+1):j+1);        
-    }
+	// This function was updated to support a new table format (when format=2), comparable to
+	// the one obtained in .ine files.
+	
+	if (format != 2) // This is just the usual code for format=0 or format=1
+		for ( j = 0; j < rowl;ptr++,j++) 
+		{
+		    if (j == rowl-1 && !format)
+		        fprintf(fp," %c= ",eqie);
+		    if (!ptr->num && (format || (!format && j == rowl-1)))
+		        fprintf(fp,"0");
+		    else if (ptr->num && vals_lt_MAXINT(ptr,1)) 
+		    {
+		        if (ptr->num < 0)
+		            fprintf(fp,"-");
+		        else if (ptr->num > 0 && ! format)
+		            fprintf(fp,"+");
+		        fprintf(fp,"%u",ptr->den.p[0]);
+		        if ( ptr->den.p[1] > 1) 
+		            fprintf(fp,"/%u",ptr->den.p[1]);
+		    }       
+		    else  if (ptr->num) 
+		    {
+		        L_RAT_to_lorat(*ptr,&x);
+		        if (ptr->num > 0 && ! format)
+		            fprintf(fp,"+");
+		        hexprint(fp,x.num);
+		        if (x.den.len > 1 || x.den.val[0] > 1) 
+		        {
+		            fprintf(fp,"/");
+		            hexprint(fp,x.den);
+		        }  
+		    }
+		    if (format)
+		        fprintf(fp," ");
+		    else if (j != rowl-1 && ptr->num)
+		        fprintf(fp,"x%i",(indx)?(indx[j]+1):j+1);        
+		}
+	else // Now we define the new table format
+	{
+		// First we write the constant. For this, we increase the ptr as much as needed
+		for ( j = 0; j < rowl-1;ptr++,j++) {};
+
+	    if (!ptr->num)
+	        fprintf(fp,"0");
+	    else if (ptr->num && vals_lt_MAXINT(ptr,1)) 
+	    {
+	        if (ptr->num < 0)
+	            fprintf(fp,"-");
+	        fprintf(fp,"%u",ptr->den.p[0]);
+	        if ( ptr->den.p[1] > 1) 
+	            fprintf(fp,"/%u",ptr->den.p[1]);
+	    }       
+	    else  if (ptr->num) 
+	    {
+	        L_RAT_to_lorat(*ptr,&x);
+	        hexprint(fp,x.num);
+	        if (x.den.len > 1 || x.den.val[0] > 1) 
+	        {
+	            fprintf(fp,"/");
+	            hexprint(fp,x.den);
+	        }  
+	    }
+        fprintf(fp," ");
+
+		// Now we get back to the beginning of the list to obtain the coefficients...
+		for ( j = 0; j < rowl-1;ptr--,j++) {};
+
+		for ( j = 0; j < rowl-1;ptr++,j++) 
+		{
+		    if (!ptr->num)
+		        fprintf(fp,"0");
+		    else if (ptr->num && vals_lt_MAXINT(ptr,1)) 
+		    {
+//				fprintf(prt, "1");
+		        if (-(ptr->num) < 0)
+		            fprintf(fp,"-");
+		        fprintf(fp,"%u",ptr->den.p[0]);
+		        if ( ptr->den.p[1] > 1) 
+		            fprintf(fp,"/%u",ptr->den.p[1]);
+		    }       
+		    else  if (ptr->num) 
+		    {
+//				fprintf(prt, "2");
+		        L_RAT_to_lorat(*ptr,&x);
+		        hexprintWithOppositeSign(fp,x.num);
+		        if (x.den.len > 1 || x.den.val[0] > 1) 
+		        {
+		            fprintf(fp,"/");
+		            hexprint(fp,x.den);
+		        }  
+		    }
+	        fprintf(fp," ");
+		}
+		ptr++; j++;
+	}
 }
 
 

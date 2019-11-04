@@ -982,7 +982,7 @@ void read_eqie( RAT **ar, int dim, int *equa, int *ineq, int *maxrows, int *line
 
 
 
-int ntemp=0;
+//int ntemp=0; // J-D B : seems not needed.
 
 
 #include <sys/types.h>
@@ -1083,7 +1083,8 @@ void write_ieq_file( char *fname, FILE *fp, int equa, int feq, int eqrl,
         fprintf(fp,"\n");
     }
     start=1;
-    if (ineq) writesys(fp,fie,fie+ineq,ierl,0,ieindx,'<',&start);
+//    if (ineq) writesys(fp,fie,fie+ineq,ierl,0,ieindx,'<',&start); // J-D B: No, we want the output to be in a particular table form -> let's use a new format
+    if (ineq) writesys(fp,fie,fie+ineq,ierl,2,ieindx,'<',&start);
     fprintf(fp,"\n");
     
     fprintf(fp, "END\n");
@@ -1238,12 +1239,13 @@ void width_line( RAT *max, int col, int format )
 
 
 
-RAT *max;
+// RAT *max; // J-D B : seems not needed as a global variable, so definition put inside the writesys function...
 
 void writesys( FILE *fp, int frow, int lrow, int rowl, int format, 
                int *indx, char eqie, int *start )
 {
     int i,j;
+    RAT *max;
     
     if (!MP_realised) 
     {
@@ -1257,12 +1259,14 @@ void writesys( FILE *fp, int frow, int lrow, int rowl, int format,
         width_line(max,rowl,format);
     }
     
+	fprintf(prt, "\n  format = %i\n\n", format);
+
     for (i = frow; i < lrow; i++)
     {
         /*
            fprintf(fp,"(%3d) ",i-frow+1);   
         */
-        fprintf(fp,"(%3d) ",*start);
+//        fprintf(fp,"(%3d) ",*start); // J-D B: We don't want to see the inequaliy/point number in fact.
         (*start)++;     
         (* writeline)(fp,rowl,porta_list[i]->sys,format,max,eqie,indx);
         if (option & Statistic_of_coefficients) 
@@ -1309,6 +1313,8 @@ void I_RAT_writeline( FILE *fp, int col, RAT *ptr, int format,
 {
     int j,l, ind = 0;
     
+//	fprintf(prt, "\n  format = %i\n\n", format);
+
     if ( format == 0) 
     {
         
@@ -1373,6 +1379,35 @@ void I_RAT_writeline( FILE *fp, int col, RAT *ptr, int format,
         } /* for j */
     } 
     
+    else if (format == 2) /* new matrix format, suited to write inequalities in the fashion of lrs (as in .ine files) */
+    {
+		// First we write the constant:
+		j = col-1;
+        if (max && (ptr+j)->den.i == 1) 
+            for (l = 0; l < max[j].den.i+1; l++)
+                fprintf(fp," ");
+        
+        fprintf( fp, "%*ld", (int)(max ? max[j].num : 1), (ptr+j)->num );
+        if ((ptr+j)->den.i != 1)
+            fprintf( fp, "/%*d", 
+                     (int)(max ? max[j].den.i : 1), (ptr+j)->den.i);
+        fprintf(fp," ");
+
+		// Now we write the inequality coefficients
+        for (j = 0; j < col-1; j++)
+        {
+            
+            if (max && (ptr+j)->den.i == 1) 
+                for (l = 0; l < max[j].den.i+1; l++)
+                    fprintf(fp," ");
+            
+            fprintf( fp, "%*ld", (int)(max ? max[j].num : 1), -((ptr+j)->num) );
+            if ((ptr+j)->den.i != 1)
+                fprintf( fp, "/%*d", 
+                         (int)(max ? max[j].den.i : 1), (ptr+j)->den.i);
+            fprintf(fp," ");
+        }
+    }
     else /* matrix format */
         
         for (j = 0; j < col; j++)
@@ -1477,11 +1512,7 @@ void writepoionie( FILE *fp, int fineq, int lineq, int points, int poi_ieq )
   }
   fprintf(fp,"\n");
   
-#if defined WIN32 || defined __CYGWIN32__ || defined __APPLE__
   free(sumie);
-#else // WIN32
-  cfree(sumie);
-#endif
 }
 
 

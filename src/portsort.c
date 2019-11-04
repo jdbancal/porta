@@ -37,7 +37,7 @@ REVISED BY ANDREAS LOEBEL
 #include "log.h"
 
 
-int comp,delay,same_vals=0,rowlen;
+int comp_ps,delay,same_vals=0,rowlen;
 int (*syscompare)(const void*,const void*);
 
 
@@ -50,9 +50,9 @@ int int_syscompare( listp *i, listp *j )
 {
     int ret_code = 0;
     
-    if( ((*i)->sys+comp)->num > ((*j)->sys+comp)->num )
+    if( ((*i)->sys+comp_ps)->num > ((*j)->sys+comp_ps)->num )
         ret_code = 1;
-    else if( ((*i)->sys+comp)->num < ((*j)->sys+comp)->num )
+    else if( ((*i)->sys+comp_ps)->num < ((*j)->sys+comp_ps)->num )
         ret_code = -1; 
     else
         ret_code = 0;
@@ -61,14 +61,14 @@ int int_syscompare( listp *i, listp *j )
 
 
     // old and buggy ...
-    // return(((*i)->sys+comp)->num - ((*j)->sys+comp)->num > 0);
+    // return(((*i)->sys+comp_ps)->num - ((*j)->sys+comp_ps)->num > 0);
 }
 
 
 
 int rat_syscompare( listp *i, listp *j )
 {
-    (*RAT_sub)(*((*i)->sys+comp),*((*j)->sys+comp),var);
+    (*RAT_sub)(*((*i)->sys+comp_ps),*((*j)->sys+comp_ps),var);
     return( var[0].num );
 
 
@@ -86,9 +86,9 @@ int ptrcompare( listp *i, listp *j )
     statptr1 = (int *) (*i)->ptr;
     statptr2 = (int *) (*j)->ptr;
 
-    if( *(statptr1+comp) > *(statptr2+comp) )
+    if( *(statptr1+comp_ps) > *(statptr2+comp_ps) )
         ret_code = 1;
-    else if( *(statptr1+comp) < *(statptr2+comp) )
+    else if( *(statptr1+comp_ps) < *(statptr2+comp_ps) )
         ret_code = -1; 
     else
         ret_code = 0;
@@ -97,7 +97,7 @@ int ptrcompare( listp *i, listp *j )
 
 
     // old and maybe buggy ...
-    // return(*(statptr1+comp) - *(statptr2+comp) > 0);
+    // return(*(statptr1+comp_ps) - *(statptr2+comp_ps) > 0);
 }
 
 
@@ -111,11 +111,11 @@ void sortrekurs( int first, int last, int whatcomp )
         
         if (whatcomp == 0)  
         {
-            comp = rowlen-1;
+            comp_ps = rowlen-1;
         }
         else 
         {
-            comp = whatcomp - 11;
+            comp_ps = whatcomp - 11;
         }
         
         if (whatcomp == 11) 
@@ -125,7 +125,7 @@ void sortrekurs( int first, int last, int whatcomp )
                 *((int *) porta_list[i]->ptr) = same_vals;
         }
         
-        compint = comp;
+        compint = comp_ps;
         qsort( &(porta_list[first]), last -first +1, sizeof(porta_list[0]), 
               (int(*)(const void*,const void*))syscompare );
         
@@ -144,9 +144,9 @@ void sortrekurs( int first, int last, int whatcomp )
     else  
     {
         
-        compint = comp = whatcomp-6;
-        if (comp >= 0)
-            compint = ++comp;
+        compint = comp_ps = whatcomp-6;
+        if (comp_ps >= 0)
+            compint = ++comp_ps;
         
         qsort(CP (porta_list +first),last-first+1,sizeof(porta_list[0]),
               (int(*)(const void*,const void*))ptrcompare);

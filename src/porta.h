@@ -56,7 +56,7 @@ struct RAT {
 };
 typedef struct RAT RAT;
 
-int mp_state;   
+extern int mp_state;
 #define MP_not_ready (mp_state == -1)
 #define MP_ready (mp_state == 0)
 #define MP_realised (mp_state == 1)
@@ -64,11 +64,12 @@ int mp_state;
 #define SET_MP_ready mp_state = 0
 #define SET_MP_realised mp_state = 1
 
-void 
+// The following were externalized to make the file available to external calling, modified by J-D B
+extern void 
   (*RAT_add)(),
   (*RAT_sub)(),
   (*RAT_mul)(),
-  (*RAT_row_prim)(),
+  (*RAT_row_prim)(RAT *, RAT *, RAT *, int), // Line completed on 26.2.2013 by J-D B to be compatible with the c++ library interface portalib.cpp
   (*RAT_assign)(),
   (*writeline)();
 
@@ -109,14 +110,14 @@ typedef struct list *listp;
 extern char andreas[];
 extern listp *porta_list;
      
-RAT RAT_const[2],var[4];
+extern RAT RAT_const[2],var[4];
 
-RAT *ar1,*ar2,*ar3,*ar4,*ar5,*ar6;
-long nel_ar1,nel_ar2,nel_ar3,nel_ar4,nel_ar5,nel_ar6;
+extern RAT *ar1,*ar2,*ar3,*ar4,*ar5,*ar6;
+extern long nel_ar1,nel_ar2,nel_ar3,nel_ar4,nel_ar5,nel_ar6;
 
-int  maxlist, total_size;
+extern int  maxlist, total_size;
 
-int  dim,
+extern int  dim,
      equa,    /* number of equalities */
      ineq,    /* number of inequalities */
      conv, 
@@ -124,14 +125,15 @@ int  dim,
      points,
      blocks;
 
+extern int *elim_in; // Added by J-D B to allow to be freed by libporta.cpp
 
-FILE *fp,*prt;
-char * RATallo();
-char * allo();
+extern FILE *fp,*prt;
+//char * RATallo(); // Removed by J-D B on 26.2.2013 for compatibility with c++ library portalib.cpp
+extern char * allo();
 
 /*  options  */
 
-int option, allowed_options;
+extern int option, allowed_options;
 #define is_set(x) (option & x)
 #define Protocol_to_file 1
 #define Redundance_check 4
@@ -150,6 +152,9 @@ int option, allowed_options;
 #define Long_arithmetic 32768
 
 
+// Function added by J-D B on 14.4.2013:
+extern long int longgcd(long int u, long int v);
+
 extern int no_denom( int, int, int, int );
 extern void reallocate( int, RAT ** );
 extern void polarformat( RAT *, int *, int, RAT * );
@@ -165,5 +170,7 @@ extern float time_used( );
 extern void init_total_time( );
 extern float total_time( );
 
+/* The following added by J-D Bancal on 22.2.2012 to call porta as a c library. */
+//extern int quick_and_dirty_poi_conv_call(long int *, int, int);
 
 #endif // _PORTA_H

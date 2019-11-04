@@ -3,6 +3,7 @@
 *.ko
 *.obj
 *.elf
+*.d
 
 # Libraries
 *.lib
@@ -21,3 +22,7 @@
 *.i*86
 *.x86_64
 *.hex
+gnu-make/bin/test
+gnu-make/bin/valid
+gnu-make/bin/xporta
+

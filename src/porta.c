@@ -28,6 +28,8 @@ REVISED BY ANDREAS LOEBEL
            D-14195 BERLIN
 
 *******************************************************************************/
+// Last edit on 4.4.2013 by J-D Bancal
+// File modified to cope with larger integers in the denominator
 /*  LAST EDIT: Fri Sep 20 13:36:44 2002 by Andreas Loebel (opt0.zib.de)  */
 /* $Id: porta.c,v 1.5 2009/09/21 07:46:48 bzfloebe Exp $ */
 
@@ -44,312 +46,365 @@ REVISED BY ANDREAS LOEBEL
 #include "four_mot.h"
 #include "portsort.h"
 
-#define FILENAME_SIZE 1000
 
-FILE *logfile;
+// The following variables were previously instanciated in the header file. Now they have been externalized here. J-D B
+int mp_state;
+
+void (*RAT_add)(),
+	 (*RAT_sub)(),
+	 (*RAT_mul)(),
+	 (*RAT_row_prim)(RAT *, RAT *, RAT *, int), // Line completed on 26.2.2013 by J-D B to be compatible with the c++ library interface portalib.cpp
+	 (*RAT_assign)(),
+	 (*writeline)();
+
+RAT RAT_const[2],var[4];
+
+RAT *ar1,*ar2,*ar3,*ar4,*ar5,*ar6;
+long nel_ar1,nel_ar2,nel_ar3,nel_ar4,nel_ar5,nel_ar6;
+
+int  maxlist, total_size;
+
+int  dim,
+     equa,    /* number of equalities */
+     ineq,    /* number of inequalities */
+     conv, 
+     cone, 
+     points,
+     blocks;
+
+FILE *fp,*prt;
+char * allo();
+
+int option, allowed_options;
 
 
 
+//FILE *logfile;
 
-int main( int argc, char *argv[] )
-{
-    int i, ieq_file, start;
-    char outfname[FILENAME_SIZE];
-    char fname[FILENAME_SIZE];
-    int   poi_file;
-    int   rowl_inar, ierl;
-    int  *indx = (int *)0;      
-    int equa_in,ineq_in, ineq_out;
-    FILE *outfp;
+
+/* On 28.2.2013, by J-D B.
+ * The main function was moved to file xporta.c so that porta.h can be
+ * seen as a library by other programs. */
+
+//int main( int argc, char *argv[] )
+//{
+		  //// A simple polytope :
+		  ///*long int data[] = {1, 0, -4, 0, 0, 1, 0, 3, 0, 0, 1, 0, 0, 0, -2, 1, 0, 0, 0, 2};
+		  //int dimension = 4;
+		  //int nbPoints = 4;*/
+		  
+		  //// Another simple polytope :
+		  ///*long int data[] = {1, 2, 3, 4, 5, 6, 7, 8};
+		  //int dimension = 3;
+		  //int nbPoints = 2;*/
+		  
+		  //// The CHSH polytope :
+		  ////long int data[] = {1, -1, -1, -1, 1, 1, -1, 1, 1, 1, -1, 1, -1, 1, -1, -1, 1, -1, 1, 1, -1, -1, -1, 1, -1, -1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, -1, -1, -1, 1, 1, 1, -1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, 1, 1, -1, -1, -1, 1, 1, 1, -1, 1, 1, 1, -1, -1, -1, 1, 1, 1, 1, -1, -1, 1, -1, -1, -1, 1, 1, 1, -1, 1, 1, -1, 1, -1, 1, -1, 1, 1, -1, 1, 1, -1, -1, -1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, 1, -1, -1, 1, -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1, -1, 1, 1, 1, -1, 1, 1, -1, 1, 1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+		  ////int dimension = 8;
+		  ////int nbPoints = 16;
+		  
+		  ////quick_and_dirty_poi_conv_call(&data, dimension, nbPoints);
+	
+		  ////exit(0);
+	
+	
+    //int i, ieq_file, start;
+    //char outfname[20];
+    //char fname[20];
+    //int   poi_file;
+    //int   rowl_inar, ierl;
+    //int  *indx = (int *)0;      
+    //int equa_in,ineq_in, ineq_out;
+    //FILE *outfp;
 
     
 
-    printf("\nPORTA - a POlyhedron Representation Transformation Algorithm\n");
-    printf(  "Version %s\n\n", VERSION );
+    //printf("\nPORTA - a POlyhedron Representation Transformation Algorithm\n");
+    //printf(  "Version %s\n\n", VERSION );
 
-    printf( "Written by Thomas Christof (Uni Heidelberg)\n" );
-    printf( "Revised by Andreas Loebel (ZIB Berlin)\n\n" );
+    //printf( "Written by Thomas Christof (Uni Heidelberg)\n" );
+    //printf( "Revised by Andreas Loebel (ZIB Berlin)\n\n" );
 
-    printf( "PORTA is free software and comes with ABSOLUTELY NO WARRENTY! You are welcome\n" );
-    printf( "to use, modify, and redistribute it under the GNU General Public Lincese.\n\n" ); 
+    //printf( "PORTA is free software and comes with ABSOLUTELY NO WARRENTY! You are welcome\n" );
+    //printf( "to use, modify, and redistribute it under the GNU General Public Lincese.\n\n" ); 
     
-    printf( "This is the program XPORTA from the PORTA package.\n\n" );
+    //printf( "This is the program XPORTA from the PORTA package.\n\n" );
 
-    if( argc <= 2 )
-    {
-        printf( "For more information read the manpages about porta.\n\n" );
-        exit(-1);
-    }
+    //if( argc <= 2 )
+    //{
+        //printf( "For more information read the manpages about porta.\n\n" );
+        //exit(-1);
+    //}
             
-    /* 17.01.1994: include logging on file porta.log */
-    logfile = fopen( "porta.log", "a" );
-    if( !logfile )
-        fprintf( stderr, "can't open logfile porta.log\n" );
-    else
-    {
-        porta_log( "\n\n\nlog for " );
-        for( i = 0; i < argc; i++ )
-            porta_log( "%s ", argv[i] );
-        porta_log( "\n\n" );
-    }
+    ///* 17.01.1994: include logging on file porta.log */
+    //logfile = fopen( "porta.log", "a" );
+    //if( !logfile )
+        //fprintf( stderr, "can't open logfile porta.log\n" );
+    //else
+    //{
+        //porta_log( "\n\n\nlog for " );
+        //for( i = 0; i < argc; i++ )
+            //porta_log( "%s ", argv[i] );
+        //porta_log( "\n\n" );
+    //}
             
-    init_total_time();
+    //init_total_time();
     
-    initialize();
+    //initialize();
 
-    prt = stdout;
-    get_options(&argc,&argv);
+    //prt = stdout;
+    //get_options(&argc,&argv);
     
-    if (option & Protocol_to_file) 
-    {
-        strcat(*argv,".prt");
-        prt = fopen(*argv,"w");
-        (*argv)[strlen(*argv)-4] = '\0';
-    }
-    setbuf(prt,CP 0);
+    //if (option & Protocol_to_file) 
+    //{
+        //strcat(*argv,".prt");
+        //prt = fopen(*argv,"w");
+        //(*argv)[strlen(*argv)-4] = '\0';
+    //}
+    //setbuf(prt,CP 0);
     
-    set_I_functions();
-    SET_MP_not_ready;
-    ieq_file = !strcmp(*argv+strlen(*argv)-4,".ieq");
-    poi_file = !strcmp(*argv+strlen(*argv)-4,".poi");
+    //set_I_functions();
+    //SET_MP_not_ready;
+    //ieq_file = !strcmp(*argv+strlen(*argv)-4,".ieq");
+    //poi_file = !strcmp(*argv+strlen(*argv)-4,".poi");
+    //printf("%i, %i",ieq_file, poi_file);
+    //if (!poi_file && !ieq_file)
+        //msg( "invalid format of command line", "", 0 );
     
-    if (!poi_file && !ieq_file)
-        msg( "invalid format of command line", "", 0 );
-    
-    /*
-     * change by M.S. 5.6.92:
-     * read_input_file writes to the output file, if is_set(Sort).
-     */
-    outfp = 0;
-    strcpy(outfname,*argv);
-    if (is_set(Sort) && poi_file) 
-    {
-        strcat(outfname,".poi");
-        outfp = wfopen(outfname);
-    }
-    if (is_set(Sort) && ieq_file) 
-    {
-        strcat(outfname,".ieq");
-        fprintf(prt,"outfname = %s\n",outfname);
-        fflush(stdout);
+    ///*
+     //* change by M.S. 5.6.92:
+     //* read_input_file writes to the output file, if is_set(Sort).
+     //*/
+    //outfp = 0;
+    //strcpy(outfname,*argv);
+    //if (is_set(Sort) && poi_file) 
+    //{
+        //strcat(outfname,".poi");
+        //outfp = wfopen(outfname);
+    //}
+    //if (is_set(Sort) && ieq_file) 
+    //{
+        //strcat(outfname,".ieq");
+        //fprintf(prt,"outfname = %s\n",outfname);
+        //fflush(stdout);
 
-        /* 17.01.1994: include logging on file porta.log */
-        porta_log( "outfname = %s\n",outfname );
-        fflush(logfile);
+        ///* 17.01.1994: include logging on file porta.log */
+        //porta_log( "outfname = %s\n",outfname );
+        //fflush(logfile);
 
-        outfp = wfopen(outfname);
-    }
+        //outfp = wfopen(outfname);
+    //}
 
-    if (is_set(Fmel) && ieq_file) 
-    {  
-        /* ONLY FM-ELIMINATON */
+    //if (is_set(Fmel) && ieq_file) 
+    //{  
+        ///* ONLY FM-ELIMINATON */
         
-        int *elim_ord,nel;
-            char *cp1;
-        elim_ord = 0;
-        cp1=strdup("ELIMINATION_ORDER");
-        if(!cp1)
-            msg( "allocation of new space failed", "", 0 );   
-        ineq = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,cp1,
-                               &elim_ord,"\0",(int **)&i,"\0",(RAT **)&i);
-        free(cp1);
-        sort_eqie_cvce(ar1,ineq,dim+2,&equa_in,&ineq_in);
-        ineq = ineq_in+equa_in;
-        /*     elim_ord = check_and_reorder_elim_ord(elim_ord,&nel); */
-        reorder_var(ineq,ar1,&ar2,(int *)&nel_ar2,&nel,&elim_ord,&indx);
-        /*     indx = elim_ord+nel; */
-        /* 
-         * Transform all inequalities into "<= 1" or "<=-1" inequalities,
-         * if possible.
-         * If the right-hand side is 0, divide the numerators by their gcd
-         * and the denominators by their gcd.
-         * (This is not really necessary).
-         */
-        /*
-           for (i = 0; i < ineq; i++) 
-           (* RAT_row_prim)(ar2+(dim+2)*i,ar2+(dim+1)*i,ar2+(dim+2)*i+dim,dim+1);
-        */
-        if(is_set(Long_arithmetic))
-        {
-            RAT a, b;
-            SET_MP_ready;
-            memset( &a, 0, sizeof(a) );
-            memset( &b, 0, sizeof(b) );
-            arith_overflow_func(0,0,a,b,0);
-        }
-        for (i = 0; i < ineq; i++) 
-            (* RAT_row_prim)(ar2+(dim+1)*i,ar2+(dim+1)*i,
-                             ar2+(dim+1)*i+dim,dim+1);
-        /*     nel_ar2 = ineq*(dim+1);  
-         */
-        equa = 0;
-        ineq_out = ineq;
-        gauss(0, dim+1, dim+1, dim-nel, equa_in, &ineq_out, &equa, indx);
-        for (; (*indx) < 0; indx++);
-        ierl = dim-nel-equa +1;
-        /* row-length of inequalities after fourier_motzkin
-         * =  number of noneliminated variables+1 */
-        nel = nel - (ineq - ineq_out);  /* number of variables to be elim. */
-        ineq = ineq_out;
-        fourier_motzkin(0,ineq-equa,dim+1-equa_in,nel,poi_file,indx,elim_ord);
-        if ((MP_realised && return_from_mp()) || !MP_realised) 
-            sort(no_denom(ierl, 0, ineq,1), ierl, 0, ineq);
-        write_ieq_file(*argv,outfp,equa,ineq,dim+1,0,
-                       ineq,0,ierl,indx);
+        //int *elim_ord,nel;
+            //char *cp1;
+        //elim_ord = 0;
+        //cp1=strdup("ELIMINATION_ORDER");
+        //if(!cp1)
+            //msg( "allocation of new space failed", "", 0 );   
+        //ineq = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,cp1,
+                               //&elim_ord,"\0",(int **)&i,"\0",(RAT **)&i);
+        //free(cp1);
+        //sort_eqie_cvce(ar1,ineq,dim+2,&equa_in,&ineq_in);
+        //ineq = ineq_in+equa_in;
+        ///*     elim_ord = check_and_reorder_elim_ord(elim_ord,&nel); */
+        //reorder_var(ineq,ar1,&ar2,(int *)&nel_ar2,&nel,&elim_ord,&indx);
+        ///*     indx = elim_ord+nel; */
+        ///* 
+         //* Transform all inequalities into "<= 1" or "<=-1" inequalities,
+         //* if possible.
+         //* If the right-hand side is 0, divide the numerators by their gcd
+         //* and the denominators by their gcd.
+         //* (This is not really necessary).
+         //*/
+        ///*
+           //for (i = 0; i < ineq; i++) 
+           //(* RAT_row_prim)(ar2+(dim+2)*i,ar2+(dim+1)*i,ar2+(dim+2)*i+dim,dim+1);
+        //*/
+        //if(is_set(Long_arithmetic))
+        //{
+            //RAT a, b;
+            //SET_MP_ready;
+            //memset( &a, 0, sizeof(a) );
+            //memset( &b, 0, sizeof(b) );
+            //arith_overflow_func(0,0,a,b,0);
+        //}
+        //for (i = 0; i < ineq; i++) 
+            //(* RAT_row_prim)(ar2+(dim+1)*i,ar2+(dim+1)*i,
+                             //ar2+(dim+1)*i+dim,dim+1);
+        ///*     nel_ar2 = ineq*(dim+1);  
+         //*/
+        //equa = 0;
+        //ineq_out = ineq;
+        //gauss(0, dim+1, dim+1, dim-nel, equa_in, &ineq_out, &equa, indx);
+        //for (; (*indx) < 0; indx++);
+        //ierl = dim-nel-equa +1;
+        ///* row-length of inequalities after fourier_motzkin
+         //* =  number of noneliminated variables+1 */
+        //nel = nel - (ineq - ineq_out);  /* number of variables to be elim. */
+        //ineq = ineq_out;
+        //fourier_motzkin(0,ineq-equa,dim+1-equa_in,nel,poi_file,indx,elim_ord);
+        //if ((MP_realised && return_from_mp()) || !MP_realised) 
+            //sort(no_denom(ierl, 0, ineq,1), ierl, 0, ineq);
+        //write_ieq_file(*argv,outfp,equa,ineq,dim+1,0,
+                       //ineq,0,ierl,indx);
         
-    }
-    else if (is_set(Sort)) 
-    {
-        points = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,"\0",(int **)&i,
-                                 "\0",(int **)&i,"\0",(RAT **)&i);
-        if (ieq_file)
-            sort_eqie_cvce(ar1,points,dim+2,&equa,&ineq);
-        listptoar(ar1,points,ieq_file?dim+2:dim+1,0); 
-        if (ieq_file) 
-        { 
-            if (equa) sort(1,dim+1,0,equa);
-            if (ineq) sort(1,dim+1,equa,points); 
-            write_ieq_file(*argv,outfp,equa,0,dim+1,0,ineq,equa,dim+1,0);
-        }
-        else 
-        {
-            sort(1,dim+1,0,points);
-            for (cone = 0; !(porta_list[cone]->sys[dim].num); cone++);
-            write_poi_file(*argv,outfp,dim,0,0,cone,0,points-cone,cone);
-        }
-    }  
-    else if ((is_set(Traf) || is_set(Dim)) && poi_file) 
-    {
-        points = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,
-                                 "\0",(int **)&i,"\0",(int **)&i,"\0",
-                                 (RAT **)&i);
-        gentableau(ar1,1,&rowl_inar,&indx); 
-        if(is_set(Long_arithmetic))
-        {
-            RAT a, b;
-            SET_MP_ready;
-            memset( &a, 0, sizeof(a) );
-            memset( &b, 0, sizeof(b) );
-            arith_overflow_func(0,0,a,b,0);
-        }
-        ineq = (cone == points) ? dim : dim + 1;
-        ineq_out = ineq;  /*not used further */
-        gauss(1, points+dim+1,dim+1,dim,ineq,&ineq_out, &equa, indx);
-        /* make indx point to the system-variable section */
-        for (; (*indx) < 0; indx++);
-        if (is_set(Dim)) 
-        {
-            char str[100];
-            fprintf (prt,"\nDIMENSION OF THE POLYHEDRON : %i\n\n",dim-equa);
+    //}
+    //else if (is_set(Sort)) 
+    //{
+        //points = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,"\0",(int **)&i,
+                                 //"\0",(int **)&i,"\0",(RAT **)&i);
+        //if (ieq_file)
+            //sort_eqie_cvce(ar1,points,dim+2,&equa,&ineq);
+        //listptoar(ar1,points,ieq_file?dim+2:dim+1,0); 
+        //if (ieq_file) 
+        //{ 
+            //if (equa) sort(1,dim+1,0,equa);
+            //if (ineq) sort(1,dim+1,equa,points); 
+            //write_ieq_file(*argv,outfp,equa,0,dim+1,0,ineq,equa,dim+1,0);
+        //}
+        //else 
+        //{
+            //sort(1,dim+1,0,points);
+            //for (cone = 0; !(porta_list[cone]->sys[dim].num); cone++);
+            //write_poi_file(*argv,outfp,dim,0,0,cone,0,points-cone,cone);
+        //}
+    //}  
+    //else if ((is_set(Traf) || is_set(Dim)) && poi_file) 
+    //{
+        //points = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,
+                                 //"\0",(int **)&i,"\0",(int **)&i,"\0",
+                                 //(RAT **)&i);
+        //gentableau(ar1,1,&rowl_inar,&indx); 
+        //if(is_set(Long_arithmetic))
+        //{
+            //RAT a, b;
+            //SET_MP_ready;
+            //memset( &a, 0, sizeof(a) );
+            //memset( &b, 0, sizeof(b) );
+            //arith_overflow_func(0,0,a,b,0);
+        //}
+        //ineq = (cone == points) ? dim : dim + 1;
+        //ineq_out = ineq;  /*not used further */
+        //gauss(1, points+dim+1,dim+1,dim,ineq,&ineq_out, &equa, indx);
+        ///* make indx point to the system-variable section */
+        //for (; (*indx) < 0; indx++);
+        //if (is_set(Dim)) 
+        //{
+            //char str[100];
+            //fprintf (prt,"\nDIMENSION OF THE POLYHEDRON : %i\n\n",dim-equa);
             
-            /* 17.01.1994: include logging on file porta.log */
-            porta_log( "\nDIMENSION OF THE POLYHEDRON : %i\n\n", dim-equa );
+            ///* 17.01.1994: include logging on file porta.log */
+            //porta_log( "\nDIMENSION OF THE POLYHEDRON : %i\n\n", dim-equa );
             
-            sprintf (str,"echo 'DIMENSION OF THE POLYHEDRON : %i' | cat >> %s",
-                     dim-equa,argv[0]);
-            system(str);
-            if (equa) 
-            {
-                fprintf(prt,"equations :\n");
+            //sprintf (str,"echo 'DIMENSION OF THE POLYHEDRON : %i' | cat >> %s",
+                     //dim-equa,argv[0]);
+            //system(str);
+            //if (equa) 
+            //{
+                //fprintf(prt,"equations :\n");
 
-                /* 17.01.1994: include logging on file porta.log */
-                porta_log( "equations :\n");
+                ///* 17.01.1994: include logging on file porta.log */
+                //porta_log( "equations :\n");
                 
-                listptoar(ar4,equa,dim+1,0); 
-                if ((MP_realised && return_from_mp()) || !MP_realised) 
-                    sort(no_denom(dim+1,0,equa,1), dim+1,0,equa);
-                start = 1;
-                /* last argument of writesys was lost? 
-                   writesys(prt,0,equa,dim+1,0,0,'=');
-                   */
-                writesys(prt,0,equa,dim+1,0,0,'=', &start);
+                //listptoar(ar4,equa,dim+1,0); 
+                //if ((MP_realised && return_from_mp()) || !MP_realised) 
+                    //sort(no_denom(dim+1,0,equa,1), dim+1,0,equa);
+                //start = 1;
+                ///* last argument of writesys was lost? 
+                   //writesys(prt,0,equa,dim+1,0,0,'=');
+                   //*/
+                //writesys(prt,0,equa,dim+1,0,0,'=', &start);
 
-                /* log equation system */
-                start = 1;
-                writesys(logfile,0,equa,dim+1,0,0,'=', &start);
-            }
-        }
-        else  
-        {
-            /* POINTS TO INEQUALITIES */
-            sprintf(fname,"%s.ieq",*argv);
-            fourier_motzkin(fname,ineq-equa,points+dim+1-ineq,
-                            points-ineq+equa,poi_file,indx,0);
-            if (is_set(Validity_table_out)) 
-                red_test(indx,ar1,&rowl_inar);
-            if ((MP_realised && return_from_mp()) || !MP_realised) 
-            {
-                if (equa) sort(no_denom(dim+1, ineq, ineq+equa,1), 
-                               dim+1, ineq, ineq+equa);
-                sort(no_denom(dim+1-equa, 0, ineq,1), 
-                     dim+1-equa, 0, ineq);
-            }
-            write_ieq_file(*argv,outfp,equa,ineq,
-                           dim+1,0,ineq,0,dim+1-equa,indx);
-        }
-    }
-    else if (is_set(Traf) && ieq_file) 
-    {
-        /* INEQUALITIES TO POINTS */
-        RAT *inner,*iep;
-        char *cp1;
-        cp1=strdup("VALID");
-        inner = 0;
-        if(!cp1)
-            msg( "allocation of new space failed", "", 0 );   
+                ///* log equation system */
+                //start = 1;
+                //writesys(logfile,0,equa,dim+1,0,0,'=', &start);
+            //}
+        //}
+        //else  
+        //{
+            ///* POINTS TO INEQUALITIES */
+            //sprintf(fname,"%s.ieq",*argv);
+            //fourier_motzkin(fname,ineq-equa,points+dim+1-ineq,
+                            //points-ineq+equa,poi_file,indx,0);
+            //if (is_set(Validity_table_out)) 
+                //red_test(indx,ar1,&rowl_inar);
+            //if ((MP_realised && return_from_mp()) || !MP_realised) 
+            //{
+                //if (equa) sort(no_denom(dim+1, ineq, ineq+equa,1), 
+                               //dim+1, ineq, ineq+equa);
+                //sort(no_denom(dim+1-equa, 0, ineq,1), 
+                     //dim+1-equa, 0, ineq);
+            //}
+            //write_ieq_file(*argv,outfp,equa,ineq,
+                           //dim+1,0,ineq,0,dim+1-equa,indx);
+        //}
+    //}
+    //else if (is_set(Traf) && ieq_file) 
+    //{
+        ///* INEQUALITIES TO POINTS */
+        //RAT *inner,*iep;
+        //char *cp1;
+        //cp1=strdup("VALID");
+        //inner = 0;
+        //if(!cp1)
+            //msg( "allocation of new space failed", "", 0 );   
             
-        points = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,
-                                 "\0",(int **)&i,
-                                 "\0",(int **)&i,cp1,&inner);
-        free(cp1);
-        ar6 = inner; if (inner) nel_ar6 = dim;
-        sort_eqie_cvce(ar1,points,dim+2,&equa_in,&ineq_in);
-        iep = ar1+equa_in*(dim+2);
-        /* first equations then inequalities */
-        points = ineq_in;
-        polarformat(iep,&equa_in,ineq_in,inner);
-        gentableau(iep,0,&rowl_inar,&indx);
-        if(is_set(Long_arithmetic)) 
-        {
-            RAT a, b;
-            SET_MP_ready;
-            memset( &a, 0, sizeof(a) );
-            memset( &b, 0, sizeof(b) );
-            arith_overflow_func(0,0,a,b,0);
-        }
-        ineq = (cone == points) ? dim : dim + 1;
-        ineq_out = ineq; /* not used further */
-        gauss(1, points+dim+1,dim+1,dim,ineq,&ineq_out, &equa, indx);
-        /* make indx point to the x-variable section */
-        for (; (*indx) < 0; indx++);
-        fourier_motzkin(0,ineq-equa,points+dim+1-ineq,
-                        points-ineq+equa,poi_file,indx,0);
-        if (is_set(Validity_table_out)) 
-            red_test(indx,iep,&rowl_inar);
-        if (cone >= dim-equa)
-            origin_add(rowl_inar,iep); 
-        resubst(inner,equa_in,indx);
-        if ((MP_realised && return_from_mp()) || !MP_realised) 
-        {
-            if (equa)
-                sort(no_denom(dim+1, ineq, ineq+equa,1), 
-                     dim+1,ineq,ineq+equa);
-            sort(0, dim+1, 0, ineq);
-        }
-        for (cone = 0; !(porta_list[cone]->sys[dim].num); cone++);
-        conv = ineq - cone;
-        if (!MP_realised) no_denom(dim+1, 0, cone,1);
-        write_poi_file(*argv,outfp,dim,equa,ineq,cone,0,conv,cone);
-    }
-    else 
-        msg( "invalid format of command line", "", 0 );
+        //points = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,
+                                 //"\0",(int **)&i,
+                                 //"\0",(int **)&i,cp1,&inner);
+        //free(cp1);
+        //ar6 = inner; if (inner) nel_ar6 = dim;
+        //sort_eqie_cvce(ar1,points,dim+2,&equa_in,&ineq_in);
+        //iep = ar1+equa_in*(dim+2);
+        ///* first equations then inequalities */
+        //points = ineq_in;
+        //polarformat(iep,&equa_in,ineq_in,inner);
+        //gentableau(iep,0,&rowl_inar,&indx);
+        //if(is_set(Long_arithmetic)) 
+        //{
+            //RAT a, b;
+            //SET_MP_ready;
+            //memset( &a, 0, sizeof(a) );
+            //memset( &b, 0, sizeof(b) );
+            //arith_overflow_func(0,0,a,b,0);
+        //}
+        //ineq = (cone == points) ? dim : dim + 1;
+        //ineq_out = ineq; /* not used further */
+        //gauss(1, points+dim+1,dim+1,dim,ineq,&ineq_out, &equa, indx);
+        ///* make indx point to the x-variable section */
+        //for (; (*indx) < 0; indx++);
+        //fourier_motzkin(0,ineq-equa,points+dim+1-ineq,
+                        //points-ineq+equa,poi_file,indx,0);
+        //if (is_set(Validity_table_out)) 
+            //red_test(indx,iep,&rowl_inar);
+        //if (cone >= dim-equa)
+            //origin_add(rowl_inar,iep); 
+        //resubst(inner,equa_in,indx);
+        //if ((MP_realised && return_from_mp()) || !MP_realised) 
+        //{
+            //if (equa)
+                //sort(no_denom(dim+1, ineq, ineq+equa,1), 
+                     //dim+1,ineq,ineq+equa);
+            //sort(0, dim+1, 0, ineq);
+        //}
+        //for (cone = 0; !(porta_list[cone]->sys[dim].num); cone++);
+        //conv = ineq - cone;
+        //if (!MP_realised) no_denom(dim+1, 0, cone,1);
+        //write_poi_file(*argv,outfp,dim,equa,ineq,cone,0,conv,cone);
+    //}
+    //else 
+        //msg( "invalid format of command line", "", 0 );
 
 
 
-    /* 17.01.1994: include logging on file porta.log */
-    fclose( logfile );
-    exit(0);
-}
+    ///* 17.01.1994: include logging on file porta.log */
+    //fclose( logfile );
+    //exit(0);
+//}
 
 
             
@@ -762,22 +817,147 @@ void writemat( RAT *ptr, int row, int col )
 }
 
 
+// This function computes the GCD of two integers
+// code taken from rosettacode.org, added by J-D B on 14.4.2013.
+long int longgcd(long int u, long int v)
+{
+	long int t;
+	while (v) {
+		t = u; 
+        u = v; 
+        v = t % v;
+	}
+    return labs(u);
+};
 
 
 
 
 
 
+//// OLD VERSION :
+//int no_denom( int sysrow, int first, int last, int outmsg )
+///*
+ //* Make a fractional point integer by multiplying it with a positive number
+ //* that is as small as possible.
+ //*/
+//{
+    //int ret=1,scm,old_scm,i,j,ie,*denom;
+    
+    ////char *unptr;
+    
+    ////printf("Ok, WHAT ABOUT HERE1?\n");
+    ////unptr = calloc(10,1);
+    ////printf("Ok, WHAT ABOUT HERE2?\n");
+    
+    ////free(unptr);
+    ////printf("Ok, WHAT ABOUT HERE3?\n");
+    
 
+    ////denom = (int *) allo(CP 0,0,U sysrow*sizeof(int));
+    
+    ////printf("address of denom = %p\n", ( void * ) denom);
+    
+    ////printf("DIDN'T EVEN REACH HERE!");
+
+	////printf("right now...");
+//////#if defined WIN32 || defined __CYGWIN32__
+    ////free(denom);
+//////#else // WIN32
+//////    cfree(denom);
+//////#endif // WIN32
+	////printf("OK LAH");
+
+
+    //denom = (int *) allo(CP 0,0,U sysrow*sizeof(int));
+
+
+    //if(outmsg)
+    //{ 
+        //fprintf(prt,"transformation to integer values ");
+
+        ///* 17.01.1994: include logging on file porta.log */
+        //porta_log( "transformation to integer values ");
+    //}
+    
+    //for (ie = first; ie < last; ie++) 
+    //{
+        
+        //for (i = 0; i < sysrow; i++)
+            //denom[i] = (porta_list[ie]->sys+i)->den.i;
+        
+        //qsort(CP denom,sysrow,sizeof(int),
+              //(int(*)(const void*,const void*))intcompare);
+        //old_scm = scm = denom[0];
+        //for (i = 0,j = 0; i < sysrow; i++)
+            //if (i > 0 && denom[i] != denom[i-1]) 
+            //{
+                //scm = old_scm*denom[i];
+                //if (scm/denom[i] != old_scm) 
+                //{
+                    //ret = 0;
+                    //break;
+                //}
+                //else
+                    //old_scm = scm;
+                //denom[j++] = denom[i];
+            //}
+        //if (i != sysrow)
+            //continue;
+        //for (i = 0; i < sysrow; i++)
+            //denom[i] = scm/denom[i];
+        //scm = scm/gcdrow(denom,j);
+        
+        //(porta_list[ie]->sys+sysrow-1)->num *= scm;
+        //for (i = 0; i < sysrow-1; i++) 
+        //{
+            //(porta_list[ie]->sys+i)->num = 
+                //(scm/(porta_list[ie]->sys+i)->den.i)
+                //*(porta_list[ie]->sys+i)->num;
+            //(porta_list[ie]->sys+i)->den.i = 1;
+        //}
+        
+    //}
+    
+    //if(outmsg)
+    //{
+        //fprintf(prt,"\n");
+
+        ///* 17.01.1994: include logging on file porta.log */
+        //porta_log( "\n");
+    //}   
+    
+////    printf("address of denom = %p\n", ( void * ) denom);
+//#if defined WIN32 || defined __CYGWIN32__ // Comment to link with c++ rather than g++ by J-D B : cfree gives the following error :... *** glibc detected *** ./test: free(): invalid pointer: 0x00007fe897c5dfdc ***
+    //free(denom);
+//#else // WIN32
+    //cfree(denom);
+//#endif // WIN32
+
+    //return(ret);
+    
+//}
+
+
+
+
+// This function was modified by J-D Bancal on 4.4.2013 to make it able
+// to remove more fractions.
 int no_denom( int sysrow, int first, int last, int outmsg )
 /*
  * Make a fractional point integer by multiplying it with a positive number
  * that is as small as possible.
  */
 {
-    int ret=1,scm,old_scm,i,j,ie,*denom;
+	fprintf(prt, "Arrived here with sysrow = %i, first = %i, last = %i, outmsg = %i\n", sysrow, first, last, outmsg);
+    int ret=1,i,j,ie;//,*denom;
+    int t;
     
-    denom = (int *) allo(CP 0,0,U sysrow*sizeof(int));
+//    denom = (int *) allo(CP 0,0,U sysrow*sizeof(int));
+    typedef long int intDenom;
+    // Here we use long int for the denominator, because product of denominators can become very big eventually...
+    intDenom scm,old_scm,*denom, gicidi,scmtmp;
+    denom = (intDenom *) allo(CP 0,0,U sysrow*sizeof(intDenom));
     
     if(outmsg)
     { 
@@ -793,15 +973,59 @@ int no_denom( int sysrow, int first, int last, int outmsg )
         for (i = 0; i < sysrow; i++)
             denom[i] = (porta_list[ie]->sys+i)->den.i;
         
-        qsort(CP denom,sysrow,sizeof(int),
-              (int(*)(const void*,const void*))intcompare);
+        qsort(CP denom,sysrow,sizeof(intDenom),
+              (intDenom(*)(const void*,const void*))intcompare);
         old_scm = scm = denom[0];
+        
         for (i = 0,j = 0; i < sysrow; i++)
             if (i > 0 && denom[i] != denom[i-1]) 
             {
-                scm = old_scm*denom[i];
-                if (scm/denom[i] != old_scm) 
+                // Here we compute the LCM (least common multiple) of the two different numbers, using the fact that lcm(a,b)=|a*b|/gcd(a,b)
+                // First we compute the GCD of the two numbers
+                //gicidi = lgcd(old_scm, denom[i]);
+                /*intDenom tt, u, v;
+                u = old_scm;
+                v = denom[i];
+                while (v) {
+                    tt = u; 
+                    u = v; 
+                    v = tt % v;
+                }
+                gicidi = labs(u);*/
+                gicidi = longgcd(old_scm, denom[i]);
+				// Now we continue with the LCM
+				scmtmp = labs(old_scm)/gicidi;
+                scm = scmtmp*labs(denom[i]);
+                if (scm/labs(denom[i]) != scmtmp) // To check whether we multiplied too big numbers...
                 {
+					fprintf(prt, "int version of the error:\n");
+					fprintf(prt, "Error for i=%i, j=%i\n", i, j);
+					fprintf(prt, "old_scm = %i, scm = %i, denom[i] = %i, ratio = %i, scmtmp = %li\n", old_scm, scm, denom[i], scm/denom[i], scmtmp);
+					fprintf(prt, "gicidi = %i\n, ", gicidi);
+
+					int tmpi;
+					for (tmpi = 0; tmpi < i; tmpi++)
+						fprintf(prt, "denom[%i] = %i\n", tmpi, denom[tmpi]);
+
+					fprintf(prt, "long int version of the error:\n");
+					fprintf(prt, "Error for i=%li, j=%li\n", i, j);
+					fprintf(prt, "old_scm = %li, scm = %li, denom[i] = %li, ratio = %li, scmtmp = %li\n", old_scm, scm, denom[i], scm/denom[i], scmtmp);
+					fprintf(prt, "gicidi = %li\n, ", gicidi);
+
+					for (tmpi = 0; tmpi < i; tmpi++)
+					{
+						fprintf(prt, "num[%li] = %li\n", tmpi, (porta_list[ie]->sys+i)->num);
+						fprintf(prt, "denom[%li] = %li\n", tmpi, denom[tmpi]);
+					}
+
+					fprintf(prt, "The full line is : ");
+					for (tmpi = 0; tmpi < sysrow; tmpi++)
+					{
+						fprintf(prt, "%li/%li ", (porta_list[ie]->sys+i)->num, denom[tmpi]);
+					}
+					fprintf(prt, "\n\n");
+
+
                     ret = 0;
                     break;
                 }
@@ -811,11 +1035,13 @@ int no_denom( int sysrow, int first, int last, int outmsg )
             }
         if (i != sysrow)
             continue;
-        for (i = 0; i < sysrow; i++)
+		for (i = 0; i < sysrow; i++)
             denom[i] = scm/denom[i];
-        scm = scm/gcdrow(denom,j);
+        scm = scm/longgcdrow(denom,j);
         
-        (porta_list[ie]->sys+sysrow-1)->num *= scm;
+        //printf("%d\n\n",scm);
+
+        (porta_list[ie]->sys+sysrow-1)->num *= scm; // Careful that the produced number here could be larger than the largest representable integer... (This is not checked for at the moment...)
         for (i = 0; i < sysrow-1; i++) 
         {
             (porta_list[ie]->sys+i)->num = 
@@ -834,11 +1060,7 @@ int no_denom( int sysrow, int first, int last, int outmsg )
         porta_log( "\n");
     }   
     
-#if defined WIN32 || defined __CYGWIN32__ || defined __APPLE__
     free(denom);
-#else // WIN32
-    cfree(denom);
-#endif // WIN32
 
     return(ret);
     
@@ -1298,3 +1520,481 @@ float total_time()
 
 #endif // WIN32
 }
+
+
+
+
+
+
+///* The following added by J-D Bancal on 22.2.2012 to call porta as a c library.
+	//The data variable is expected to be of the standard *.ext format, i.e.
+	
+	//[1 -1
+	//1  2]   ,  which is given as data=[1 -1 1 2] (i.e. line by line)
+	
+	//for a 1-dimensional polytope with extreme points x=-1, and x=+2 (dimension = 1, nbPoints = 2).
+
+//*/
+//int quick_and_dirty_poi_conv_call(long int *data, int dimension, int nbPoints)
+//{
+    //int ieq_file, start;
+    //char outfname[20];
+    //char fname[20];
+    //int   poi_file;
+    //int   rowl_inar, ierl;
+    //int  *indx = (int *)0;      
+    //int equa_in,ineq_in, ineq_out;
+    //FILE *outfp;
+
+    //int i,j; // Added by J-D B, used as summation indices later.
+
+    
+
+    //printf("\nPORTA - a POlyhedron Representation Transformation Algorithm\n");
+    //printf(  "Version %s\n\n", VERSION );
+
+    //printf( "Written by Thomas Christof (Uni Heidelberg)\n" );
+    //printf( "Revised by Andreas Loebel (ZIB Berlin)\n\n" );
+
+    //printf( "PORTA is free software and comes with ABSOLUTELY NO WARRENTY! You are welcome\n" );
+    //printf( "to use, modify, and redistribute it under the GNU General Public Lincese.\n\n" ); 
+    
+    //printf( "This is the program XPORTA from the PORTA package.\n\n" );
+
+///*    if( argc <= 2 )
+    //{
+        //printf( "For more information read the manpages about porta.\n\n" );
+        //exit(-1);
+    //}*/
+            
+    ///* 17.01.1994: include logging on file porta.log */
+    //logfile = fopen( "porta.log", "a" );
+    //if( !logfile )
+        //fprintf( stderr, "can't open logfile porta.log\n" );
+    //else
+    //{
+///*        porta_log( "\n\n\nlog for " );
+        //for( i = 0; i < argc; i++ )
+            //porta_log( "%s ", argv[i] );
+        //porta_log( "\n\n" );*/
+        //porta_log("\n\n\nlog for quick_and_dirty_poi_conv_call\n\n");
+    //}
+            
+    //init_total_time();
+    
+    //initialize();
+
+    //prt = stdout;
+
+    ///*get_options(&argc,&argv);*/
+    ///*We bypass the previous line which gives errors, and just use the following,
+     //* which corresponds to having the option "-T" :*/
+    //option |= Traf;
+                //allowed_options = Traf|
+                    //Chernikov_rule_off|Validity_table_out|
+                    //Redundance_check|Statistic_of_coefficients|
+                    //Protocol_to_file|Opt_elim|Long_arithmetic;
+    
+    //if (option & Protocol_to_file) 
+    //{
+        //printf("\n\n\n\n Reached here!!!!! (Should not).\n\n\n\n");
+///*        strcat(*argv,".prt");
+        //prt = fopen(*argv,"w");
+        //(*argv)[strlen(*argv)-4] = '\0';*/
+    //}
+    //setbuf(prt,CP 0);
+    
+    //set_I_functions();
+    //SET_MP_not_ready;
+    //ieq_file = 0; /*!strcmp(*argv+strlen(*argv)-4,".ieq");*/
+    //poi_file = 1; /*!strcmp(*argv+strlen(*argv)-4,".poi");*/
+    
+    //if (!poi_file && !ieq_file)
+        //msg( "invalid format of command line", "", 0 );
+    
+    ///*
+     //* change by M.S. 5.6.92:
+     //* read_input_file writes to the output file, if is_set(Sort).
+     //*/
+    //outfp = 0;
+    ///*strcpy(outfname,*argv);
+    //if (is_set(Sort) && poi_file) 
+    //{
+        //strcat(outfname,".poi");
+        ///*outfp = wfopen(outfname);*/ /* Actually, we don't want to open any file since the data has been passedpassed to us in the argument. */
+    ///*}
+    //if (is_set(Sort) && ieq_file) 
+    //{
+        //strcat(outfname,".ieq");
+        //fprintf(prt,"outfname = %s\n",outfname);
+        //fflush(stdout);
+
+        ///* 17.01.1994: include logging on file porta.log */
+        ///*porta_log( "outfname = %s\n",outfname );
+        //fflush(logfile);
+
+        ///*outfp = wfopen(outfname);*/ /* Actually, we don't want to open any file since the data has been passed to us in the argument. */
+    ////}
+
+    //if (is_set(Fmel) && ieq_file) 
+    //{  
+        ///* ONLY FM-ELIMINATON */
+        
+        //int *elim_ord,nel;
+            //char *cp1;
+        //elim_ord = 0;
+        //cp1=strdup("ELIMINATION_ORDER");
+        //if(!cp1)
+            //msg( "allocation of new space failed", "", 0 );
+            
+        ///*ineq = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,cp1,
+                               //&elim_ord,"\0",(int **)&i,"\0",(RAT **)&i);*/
+        ///* We need to replace the above line with something more adapted.... */
+        //ineq = 0;
+        
+        
+        //free(cp1);
+        //sort_eqie_cvce(ar1,ineq,dim+2,&equa_in,&ineq_in);
+        //ineq = ineq_in+equa_in;
+        ///*     elim_ord = check_and_reorder_elim_ord(elim_ord,&nel); */
+        //reorder_var(ineq,ar1,&ar2,(int *)&nel_ar2,&nel,&elim_ord,&indx);
+        ///*     indx = elim_ord+nel; */
+        ///* 
+         //* Transform all inequalities into "<= 1" or "<=-1" inequalities,
+         //* if possible.
+         //* If the right-hand side is 0, divide the numerators by their gcd
+         //* and the denominators by their gcd.
+         //* (This is not really necessary).
+         //*/
+        ///*
+           //for (i = 0; i < ineq; i++) 
+           //(* RAT_row_prim)(ar2+(dim+2)*i,ar2+(dim+1)*i,ar2+(dim+2)*i+dim,dim+1);
+        //*/
+        //if(is_set(Long_arithmetic))
+        //{
+            //RAT a, b;
+            //SET_MP_ready;
+            //memset( &a, 0, sizeof(a) );
+            //memset( &b, 0, sizeof(b) );
+            //arith_overflow_func(0,0,a,b,0);
+        //}
+        //for (i = 0; i < ineq; i++) 
+            //(* RAT_row_prim)(ar2+(dim+1)*i,ar2+(dim+1)*i,
+                             //ar2+(dim+1)*i+dim,dim+1);
+        ///*     nel_ar2 = ineq*(dim+1);  
+         //*/
+        //equa = 0;
+        //ineq_out = ineq;
+        //gauss(0, dim+1, dim+1, dim-nel, equa_in, &ineq_out, &equa, indx);
+        //for (; (*indx) < 0; indx++);
+        //ierl = dim-nel-equa +1;
+        ///* row-length of inequalities after fourier_motzkin
+         //* =  number of noneliminated variables+1 */
+        //nel = nel - (ineq - ineq_out);  /* number of variables to be elim. */
+        //ineq = ineq_out;
+        //fourier_motzkin(0,ineq-equa,dim+1-equa_in,nel,poi_file,indx,elim_ord);
+        //if ((MP_realised && return_from_mp()) || !MP_realised) 
+            //sort(no_denom(ierl, 0, ineq,1), ierl, 0, ineq);
+        ///*write_ieq_file(*argv,outfp,equa,ineq,dim+1,0,
+                       //ineq,0,ierl,indx);*/
+        ///* Here we still need to return the output inequalities computed ... */
+        
+    //}
+    ///*else if (is_set(Sort)) 
+    //{
+        ///*points = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,"\0",(int **)&i,
+                                 //"\0",(int **)&i,"\0",(RAT **)&i);*/
+        ///* Line above to be replaced ... */
+        ///*if (ieq_file)
+            //sort_eqie_cvce(ar1,points,dim+2,&equa,&ineq);
+        //listptoar(ar1,points,ieq_file?dim+2:dim+1,0); 
+        //if (ieq_file) 
+        //{ 
+            //if (equa) sort(1,dim+1,0,equa);
+            //if (ineq) sort(1,dim+1,equa,points); 
+            //write_ieq_file(*argv,outfp,equa,0,dim+1,0,ineq,equa,dim+1,0);
+        //}
+        //else 
+        //{
+            //sort(1,dim+1,0,points);
+            //for (cone = 0; !(porta_list[cone]->sys[dim].num); cone++);
+            //write_poi_file(*argv,outfp,dim,0,0,cone,0,points-cone,cone);
+        //}
+    //}  */
+    //else if ((is_set(Traf) || is_set(Dim)) && poi_file) 
+    //{
+///*        points = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,
+                                 //"\0",(int **)&i,"\0",(int **)&i,"\0",
+                                 //(RAT **)&i);*/
+                                 
+        ///* Here we replace the previous line by the variables given in argument 
+           //section appended by J-D Bancal, 22.2.2012. */
+        //points = nbPoints;
+        //dim = dimension;
+
+        ///* We allocate the memory needed and initialize the table */
+        //ar1 = (RAT *) RATallo(ar1, 0, (points+1)*(dim+1)); // Note that for some reason porta seems to allocate memory for one more extremal point... so we also do that here.
+        //for (i = 0; i < points; i++)
+        //{
+            //for (j = 0; j < dim+1; j++)
+            //{
+            	    //if (j != dim) /* We put the constant term at the end of the column. */
+            	    //{
+////            	    	printf("Element (i,j)=(%i,%i) vaut %li\n", i, j, data[i*(dim+1)+j+1]);
+            	        //ar1[i*(dim+1)+j].num = data[i*(dim+1)+j+1];
+            	    //}
+            	    //else 
+            	    //{
+////            	    	printf("Element (i,j)=(%i,%i) vaut %li\n", i, j, data[i*(dim+1)]);
+            	        //ar1[i*(dim+1)+j].num = data[i*(dim+1)];
+            	    //}
+            //}
+        //}
+        ///* We also prepare the valid point */
+        //ar6 = (RAT *) RATallo(ar6, 0, (points+1)*dim);
+        //for (j = 0; j < dim; j++)
+   	        //ar6[j] = ar1[j];
+
+        
+		///* Here we examine what the previous function produced. */   
+		///*printf("points = %i\n", points);
+		//printf("address of ar1 = %p\n", ( void * ) ar1);
+		//printf("first few values of ar1 = ...\n");
+		//printf("%li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i\n", ar1[0].num, ar1[0].den.i, ar1[1].num, ar1[1].den.i, ar1[2].num, ar1[2].den.i, ar1[3].num, ar1[3].den.i, ar1[4].num, ar1[4].den.i, ar1[5].num, ar1[5].den.i, ar1[6].num, ar1[6].den.i, ar1[7].num, ar1[7].den.i, ar1[8].num, ar1[8].den.i, ar1[9].num, ar1[9].den.i);
+		//printf("%li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i\n", ar1[10].num, ar1[10].den.i, ar1[11].num, ar1[11].den.i, ar1[12].num, ar1[12].den.i, ar1[13].num, ar1[13].den.i, ar1[14].num, ar1[14].den.i, ar1[15].num, ar1[15].den.i, ar1[16].num, ar1[16].den.i, ar1[17].num, ar1[17].den.i, ar1[18].num, ar1[18].den.i, ar1[19].num, ar1[19].den.i);
+		//printf("%li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i\n", ar1[20].num, ar1[20].den.i, ar1[21].num, ar1[21].den.i, ar1[22].num, ar1[22].den.i, ar1[23].num, ar1[23].den.i, ar1[24].num, ar1[24].den.i, ar1[25].num, ar1[25].den.i, ar1[26].num, ar1[26].den.i, ar1[27].num, ar1[27].den.i, ar1[28].num, ar1[28].den.i, ar1[29].num, ar1[29].den.i);
+		//printf("%li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i\n", ar1[30].num, ar1[30].den.i, ar1[31].num, ar1[31].den.i, ar1[32].num, ar1[32].den.i, ar1[33].num, ar1[33].den.i, ar1[34].num, ar1[34].den.i, ar1[35].num, ar1[35].den.i, ar1[36].num, ar1[36].den.i, ar1[37].num, ar1[37].den.i, ar1[38].num, ar1[38].den.i, ar1[39].num, ar1[39].den.i);
+		//printf("%li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i\n", ar1[40].num, ar1[40].den.i, ar1[41].num, ar1[41].den.i, ar1[42].num, ar1[42].den.i, ar1[43].num, ar1[43].den.i, ar1[44].num, ar1[44].den.i, ar1[45].num, ar1[45].den.i, ar1[46].num, ar1[46].den.i, ar1[47].num, ar1[47].den.i, ar1[48].num, ar1[48].den.i, ar1[49].num, ar1[49].den.i);
+		//printf("%li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i\n", ar1[50].num, ar1[50].den.i, ar1[51].num, ar1[51].den.i, ar1[52].num, ar1[52].den.i, ar1[53].num, ar1[53].den.i, ar1[54].num, ar1[54].den.i, ar1[55].num, ar1[55].den.i, ar1[56].num, ar1[56].den.i, ar1[57].num, ar1[57].den.i, ar1[58].num, ar1[58].den.i, ar1[59].num, ar1[59].den.i);
+        
+		//printf("element number 32 : %li/%i\n", ar1[32].num, ar1[32].den.i);
+		//printf("element number 56 : %li/%i\n", ar1[56].num, ar1[56].den.i);
+		
+		//printf("dim = %i\n", dim);
+		//printf("nel_ar1 = %li\n", nel_ar1);
+		
+        //for (j = 0; j < dim+1; j++)
+        				//printf("ar6[%i] is %li/%i\n",j,ar6[j].num,ar6[j].den.i);*/
+
+        //gentableau(ar1,1,&rowl_inar,&indx); 
+        //if(is_set(Long_arithmetic))
+        //{
+            //RAT a, b;
+            //SET_MP_ready;
+            //memset( &a, 0, sizeof(a) );
+            //memset( &b, 0, sizeof(b) );
+            //arith_overflow_func(0,0,a,b,0);
+        //}
+        //ineq = (cone == points) ? dim : dim + 1;
+        //ineq_out = ineq;  /*not used further */
+        //gauss(1, points+dim+1,dim+1,dim,ineq,&ineq_out, &equa, indx);
+        ///* make indx point to the system-variable section */
+        //for (; (*indx) < 0; indx++);
+        //if (is_set(Dim)) 
+        //{
+            //char str[100];
+            //fprintf (prt,"\nDIMENSION OF THE POLYHEDRON : %i\n\n",dim-equa);
+            
+            ///* 17.01.1994: include logging on file porta.log */
+            //porta_log( "\nDIMENSION OF THE POLYHEDRON : %i\n\n", dim-equa );
+            
+			///*sprintf (str,"echo 'DIMENSION OF THE POLYHEDRON : %i' | cat >> %s",
+                     //dim-equa,argv[0]);*/
+            //sprintf (str,"echo 'DIMENSION OF THE POLYHEDRON : %i'",
+                     //dim-equa);
+            //system(str);
+            //if (equa) 
+            //{
+                //fprintf(prt,"equations :\n");
+
+                ///* 17.01.1994: include logging on file porta.log */
+                //porta_log( "equations :\n");
+                
+                //listptoar(ar4,equa,dim+1,0); 
+                //if ((MP_realised && return_from_mp()) || !MP_realised) 
+                    //sort(no_denom(dim+1,0,equa,1), dim+1,0,equa);
+                //start = 1;
+                ///* last argument of writesys was lost? 
+                   //writesys(prt,0,equa,dim+1,0,0,'=');
+                   //*/
+                //writesys(prt,0,equa,dim+1,0,0,'=', &start);
+
+                ///* log equation system */
+                //start = 1;
+                //writesys(logfile,0,equa,dim+1,0,0,'=', &start);
+            //}
+        //}
+        //else  
+        //{
+            ///* POINTS TO INEQUALITIES */
+            ///*sprintf(fname,"%s.ieq",*argv);*/
+            //fourier_motzkin(fname,ineq-equa,points+dim+1-ineq,
+                            //points-ineq+equa,poi_file,indx,0);
+            //if (is_set(Validity_table_out)) 
+                //red_test(indx,ar1,&rowl_inar);
+            //if ((MP_realised && return_from_mp()) || !MP_realised) 
+            //{
+                //if (equa) sort(no_denom(dim+1, ineq, ineq+equa,1), 
+                               //dim+1, ineq, ineq+equa);
+                //sort(no_denom(dim+1-equa, 0, ineq,1), 
+                     //dim+1-equa, 0, ineq);
+            //}
+            ///*write_ieq_file("output",outfp,equa,ineq,
+                           //dim+1,0,ineq,0,dim+1-equa,indx);*/
+            
+            //// Here we write the output in the lrs format
+			//printf("\n* Result of the conversion:\n");
+			//printf("H-representation\n");
+			//if (equa > 0)
+			//{
+				//printf("linearity %i", equa);
+				//for (i = 0; i < equa; i++)
+					//printf(" %i", i+1);
+				//printf("\n");
+			//};
+			//printf("begin\n");
+			//printf("%i %i rational\n", ineq+equa, dim+1);
+			//for (i = 0; i < equa; i++)
+			//{
+				//printf("%li", (porta_list[ineq+i]->sys+dim)->num);
+				//if (((porta_list[ineq+i]->sys+dim)->den.i) != 1)
+					//printf("/%i ", (porta_list[ineq+dim]->sys+j)->den.i);
+				//else
+					//printf(" ");
+				//for (j = 0; j < dim; j++)
+				//{
+					//printf("%li", (porta_list[ineq+i]->sys+j)->num);
+					//if (((porta_list[ineq+i]->sys+j)->den.i) != 1)
+						//printf("/%i ", (porta_list[ineq+i]->sys+j)->den.i);
+					//else
+						//printf(" ");
+				//}
+				//printf("\n");
+			//};
+			
+			//// We prepare the inverse index vector to know for each variable
+			//// whether it is part of the inequality section or not.
+			//int indices[dim];
+			//for (j = 0; j < dim; j++)
+				//indices[j] = -1;
+			//for (j = 0; j < dim-equa; j++)
+				//indices[*(indx+j)] = j;
+			
+			//for (i = 0; i < ineq; i++)
+			//{
+				//printf("%li", (porta_list[i]->sys+dim-equa)->num);
+				//if (((porta_list[i]->sys+dim-equa)->den.i) != 1)
+					//printf("/%i ", (porta_list[i]->sys+dim-equa)->den.i);
+				//else
+					//printf(" ");
+				//for (j = 0; j < dim; j++)
+				//{
+					//if (indices[j] == -1) // In this case the current variable does not appear in the inequality description
+						//printf("0 ");
+					//else
+					//{
+						//printf("%li", (porta_list[i]->sys+indices[j])->num);
+						//if (((porta_list[i]->sys+indices[j])->den.i) != 1)
+							//printf("/%i ", (porta_list[i]->sys+indices[j])->den.i);
+						//else
+							//printf(" ");
+					//}
+				//}
+				//printf("\n");
+			//};
+			//printf("end\n\n");
+
+			
+			
+///*			printf("first few values of porta_list = ...\n");
+			//printf("%li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i, %li/%i\n", (porta_list[0]->sys+0)->num, (porta_list[0]->sys+0)->den.i, (porta_list[0]->sys+1)->num, (porta_list[0]->sys+1)->den.i, (porta_list[0]->sys+2)->num, (porta_list[0]->sys+2)->den.i, (porta_list[0]->sys+3)->num, (porta_list[0]->sys+3)->den.i, (porta_list[0]->sys+4)->num, (porta_list[0]->sys+4)->den.i, (porta_list[0]->sys+5)->num, (porta_list[0]->sys+5)->den.i, (porta_list[0]->sys+6)->num, (porta_list[0]->sys+6)->den.i, (porta_list[0]->sys+7)->num, (porta_list[0]->sys+7)->den.i, (porta_list[0]->sys+8)->num, (porta_list[0]->sys+8)->den.i);
+			//printf("Inequalities :\n");
+			////int i;
+			//for (i = 0; i < ineq; i++)
+			//{
+				//for (j = 0; j < dim+1-equa; j++)
+					//printf("%li, ", (porta_list[i]->sys+j)->num);
+				//printf("\n");
+			//};
+			//printf("Equalities :\n");
+			//for (i = 0; i < equa; i++)
+			//{
+				//for (j = 0; j < dim+1; j++)
+					//printf("%li, ", (porta_list[ineq+i]->sys+j)->num);
+				//printf("\n");
+			//};
+			//printf("equa, ineq = %i,%i\n", equa, ineq);
+			//printf("dim+1 = %i\n", dim+1);
+			//printf("ineq, 0 = %i,%i\n", ineq,0);
+			//printf("dim+1-equa = %i\n", dim+1-equa);
+			//for (j = 0; j < dim-equa; j++)
+				//printf("*(indx+%i) = %i\n", j, *(indx+j));*/
+        //}
+    //}
+    //else if (is_set(Traf) && ieq_file) 
+    //{
+        ///* INEQUALITIES TO POINTS */
+        //RAT *inner,*iep;
+        //char *cp1;
+        //cp1=strdup("VALID");
+        //inner = 0;
+        //if(!cp1)
+            //msg( "allocation of new space failed", "", 0 );   
+            
+        ///*points = read_input_file(*argv,outfp,&dim,&ar1,(int *)&nel_ar1,
+                                 //"\0",(int **)&i,
+                                 //"\0",(int **)&i,cp1,&inner);*/
+        //points = nbPoints;
+        ///* Still need to elaborate here... */
+        
+        //free(cp1);
+        //ar6 = inner; if (inner) nel_ar6 = dim;
+        //sort_eqie_cvce(ar1,points,dim+2,&equa_in,&ineq_in);
+        //iep = ar1+equa_in*(dim+2);
+        ///* first equations then inequalities */
+        //points = ineq_in;
+        //polarformat(iep,&equa_in,ineq_in,inner);
+        //gentableau(iep,0,&rowl_inar,&indx);
+        //if(is_set(Long_arithmetic)) 
+        //{
+            //RAT a, b;
+            //SET_MP_ready;
+            //memset( &a, 0, sizeof(a) );
+            //memset( &b, 0, sizeof(b) );
+            //arith_overflow_func(0,0,a,b,0);
+        //}
+        //ineq = (cone == points) ? dim : dim + 1;
+        //ineq_out = ineq; /* not used further */
+        //gauss(1, points+dim+1,dim+1,dim,ineq,&ineq_out, &equa, indx);
+        ///* make indx point to the x-variable section */
+        //for (; (*indx) < 0; indx++);
+        //fourier_motzkin(0,ineq-equa,points+dim+1-ineq,
+                        //points-ineq+equa,poi_file,indx,0);
+        //if (is_set(Validity_table_out)) 
+            //red_test(indx,iep,&rowl_inar);
+        //if (cone >= dim-equa)
+            //origin_add(rowl_inar,iep); 
+        //resubst(inner,equa_in,indx);
+        //if ((MP_realised && return_from_mp()) || !MP_realised) 
+        //{
+            //if (equa)
+                //sort(no_denom(dim+1, ineq, ineq+equa,1), 
+                     //dim+1,ineq,ineq+equa);
+            //sort(0, dim+1, 0, ineq);
+        //}
+        //for (cone = 0; !(porta_list[cone]->sys[dim].num); cone++);
+        //conv = ineq - cone;
+        //if (!MP_realised) no_denom(dim+1, 0, cone,1);
+        ///*write_poi_file(*argv,outfp,dim,equa,ineq,cone,0,conv,cone);*/
+        ///* Still need to return the computed points here ... */
+    //}
+    //else 
+        //msg( "invalid format of command line", "", 0 );
+
+
+
+    ///* 17.01.1994: include logging on file porta.log */
+    //fclose( logfile );
+    //exit(0);
+//}
+
